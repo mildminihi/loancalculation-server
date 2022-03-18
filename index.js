@@ -10,14 +10,16 @@ app.get("/", (req, res) => {
     dateofbirth: "1987-02-11",
     age: getAge(1987-02-11),
     dateofmember: "2009-01-03",
-    salary: 30000.00,
-    bond: 100000.00
+    salary: 30000,
+    bondTotal: 100000,
+    bondPerMonth: 2000,
+    bondInstallmentCount: 50
   });
 });
 
-function flashLoan(isNewMember, salary, bond) {
+function flashLoan(memberYear, salary, bond) {
   let bondRatio = (bond * 90) / 100;
-  if (isNewMember) {
+  if (memberYear < 0.5) {
     return "อายุสมาชิกไม่ผ่านเกณฑ์อย่างน้อย 6 เดือน";
   } else {
       if ((salary * 2) >= bondRatio) {
@@ -25,6 +27,35 @@ function flashLoan(isNewMember, salary, bond) {
       } else {
         return "สิทธิ์กู้ฉุกเฉินได้ไม่เกิน " + (salary * 2) + " บาท";
       }
+  }
+}
+
+function getRetireSalary(retireYearTotal, salary) {
+  var totalSalary = salary;
+  for (let i = 0; i < retireYearTotal; i++) {
+    totalSalary += (salary * 5) / 100;
+  }
+  return totalSalary;
+}
+
+function getRetireYearTotal(dob) {
+  let age = getAge(dob);
+  let birthDate = new Date(dob);
+  var retireYearTotal = 60 - age;
+  if (birthDate.getMonth < 10) {
+    return retireYearTotal;
+  } else {
+    return retireYearTotal + 1;
+  }
+}
+
+function getMemberYear(bondInstallmentCount) {
+  if (bondInstallmentCount < 6) {
+    return 0;
+  } else if (bondInstallmentCount < 12) {
+    return 0.5;
+  } else {
+    return bondInstallmentCount % 12;
   }
 }
 
