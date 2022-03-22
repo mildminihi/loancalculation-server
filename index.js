@@ -5,7 +5,7 @@ const port = 8000;
 
 let todayDate = new Date();
 
-app.get("/", (req, res) => {
+app.get("/user/106", (req, res) => {
   res.json(sampleData);
 });
 
