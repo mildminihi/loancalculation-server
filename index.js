@@ -10,10 +10,29 @@ app.get("/", (req, res) => {
 });
 
 app.get("/flashLoan", (req, res) => {
-  let isNewMember = getMemberStatus(sampleData.memberStartDate) == 0;
-  let flashLoanTotal = flashLoan(isNewMember, sampleData.salary, sampleData.bondTotal);
-  res.send('<p> ยอดกู้ฉุกเฉินก่อนหักรายจ่าย '+ flashLoanTotal +' บาท</p>');
+  res.json(flashLoan(sampleData));
 });
+
+app.get("/medium", (req, res) => {
+
+});
+
+function getOutStandingByType(type, contracts) {
+  const result = contracts.filter(contract => contract.id.slice(0,1) == type);
+  if (result.length == 0) {
+    return 0
+  } else {
+    return result[0].outStanding;
+  }
+}
+
+function getTotalPayPerMonth(contracts) {
+  var totalPayPerMonth = 0;
+  contracts.forEach(contract => {
+    totalPayPerMonth += contract.payPerMonth;
+  });
+  return totalPayPerMonth;
+}
 
 function getMemberStatus(memberStartDate) {
   let startDate = new Date(memberStartDate);
@@ -28,16 +47,54 @@ function getMemberStatus(memberStartDate) {
   }
 }
 
-function flashLoan(isNewMember, salary, bond) {
+function flashLoan(userData) {
+  let salary = userData.salary;
+  let isNewMember = getMemberStatus(userData.memberStartDate) == 0;
+  let bond = userData.bondTotal;
   let bondRatio = (bond * 90) / 100;
+  var flashLoanTotal = 0;
+  // ถ้าเป็นสมาชิกไม่ถึง 6 เดือนไม่มีสิทธิ์กู้ กู้ได้สูงสุดเท่ากับ2เท่าของเงินเดือนและไม่เกิน90%ของหุ้น
   if (isNewMember) {
-    return 0;
+    flashLoanTotal = 0;
   } else {
       if ((salary * 2) >= bondRatio) {
-        return bondRatio;
+        flashLoanTotal = bondRatio;
       } else {
-        return (salary * 2);
+        flashLoanTotal = (salary * 2);
       }
+  }
+  let previousFlashLoan = getOutStandingByType("ฉ", userData.contracts);
+  flashLoanTotal -= previousFlashLoan;
+  let payPerMonthTotal = getTotalPayPerMonth(userData.contracts);
+  let salaryBeforeNewLoan = salary - payPerMonthTotal;
+  // เชคว่าตอนนี้เงินได้รายเดือนถึง 2000 หรือไม่ถ้าไม่ถึงจะไม่มีสิทธิ์กู้
+  if (salaryBeforeNewLoan <= 2000) {
+    flashLoanTotal = 0;
+  }
+  var flashLoanPerMonth = Math.ceil(flashLoanTotal / 12);
+  var salaryAfterNewLoan = salaryBeforeNewLoan - flashLoanPerMonth;
+  // เชคว่าหลังจากกู้สัญญาใหม่เงินได้ต่อเดือนถึง 2000 หรือไม่ถ้าไม่ถึงคำนวนวงเงินใหม่
+  if (salaryAfterNewLoan <= 2000) {
+    flashLoanPerMonth -= (2000 - salaryAfterNewLoan);
+    flashLoanTotal = flashLoanPerMonth * 12;
+    salaryAfterNewLoan = salaryBeforeNewLoan - flashLoanPerMonth;
+  }
+  return {
+      flashLoanTotal: flashLoanTotal,
+      salaryBeforeNewLoan: salaryBeforeNewLoan,
+      previousFlashLoan: previousFlashLoan,
+      newFlashLoanPerMonth: flashLoanPerMonth,
+      salaryAfterNewLoan: salaryAfterNewLoan
+    }
+}
+
+function mediumLoan(memberPeriod) {
+  if (memberPeriod == 0.5) {
+    return 100000;
+  } else if (memberPeriod == 1) {
+    return 400000;
+  } else {
+    return 600000;
   }
 }
 
@@ -57,16 +114,6 @@ function getRetireYearTotal(dob) {
     return retireYearTotal;
   } else {
     return retireYearTotal + 1;
-  }
-}
-
-function getMemberYear(bondInstallmentCount) {
-  if (bondInstallmentCount < 6) {
-    return 0;
-  } else if (bondInstallmentCount < 12) {
-    return 0.5;
-  } else {
-    return bondInstallmentCount % 12;
   }
 }
 
@@ -94,14 +141,15 @@ let sampleData = {
   salary: 15698,
   bondTotal: 513940,
   bondPerMonth: 1000,
-  contract: [
+  contracts: [
     {
       id: "ส003190/2562",
       startDate: "18/02/2562",
       periodTotal: 239,
       approvalLimit: 429000,
       payPerMonth: 1800,
-      paidPeriodTotal: 36
+      paidPeriodTotal: 36,
+      outStanding: 364200
     },
     {
       id: "ก016770/2563",
@@ -109,7 +157,8 @@ let sampleData = {
       periodTotal: 82,
       approvalLimit: 49000,
       payPerMonth: 600,
-      paidPeriodTotal: 17
+      paidPeriodTotal: 17,
+      outStanding: 38800
     }
   ]
 }
