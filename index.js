@@ -1,6 +1,8 @@
 const express = require("express");
 const { getDefaultSettings } = require("http2");
 const app = express();
+const cors = require('cors');
+app.use(cors());
 const port = 8000;
 
 let todayDate = new Date();
@@ -135,9 +137,8 @@ let sampleData = {
   citizenId: "3120100344708",
   memberId: "106",
   birthDate: "10/12/2471",
-  age: "80  ปี  1  เดือน",
+  age: "93 ปี 3 เดือน",
   memberStartDate: "04/01/2514",
-  memberPeriod: "94",
   salary: 15698,
   bondTotal: 513940,
   bondPerMonth: 1000,
