@@ -19,8 +19,46 @@ app.get("/medium", (req, res) => {
 
 });
 
+function flashLoan(userData) {
+  let salary = userData.salary;
+  let isNewMember = getMemberStatus(userData.memberStartDate) == 0;
+  let bond = userData.bondTotal;
+  let bondRatio = (bond * 90) / 100;
+  let payPerMonthTotal = getOtherLoanPayPerMonth(userData.contracts, "ฉ");
+  var incomePerMonth = salary - payPerMonthTotal;
+  var flashLoanTotal = 0;
+  // ถ้าเป็นสมาชิกไม่ถึง 6 เดือนไม่มีสิทธิ์กู้ กู้ได้สูงสุดเท่ากับ2เท่าของเงินเดือนและไม่เกิน90%ของหุ้น
+  if (isNewMember) {
+    flashLoanTotal = 0;
+  } else {
+    if (incomePerMonth <= 2000) {
+      flashLoanTotal = 0;
+    } else {
+      if ((incomePerMonth * 2) >= bondRatio) {
+        flashLoanTotal = bondRatio;
+      } else {
+        flashLoanTotal = (Math.floor((incomePerMonth * 2) / 100) * 100);
+      }
+    }
+  }
+  let previousFlashLoan = getOutStandingByType("ฉ", userData.contracts);
+  flashLoanTotal -= previousFlashLoan;
+  var flashLoanPerMonth = Math.ceil((flashLoanTotal / 12) / 10) * 10;
+  var salaryAfterNewLoan = incomePerMonth - flashLoanPerMonth;
+  var flashLoanLastMonth = flashLoanTotal - (flashLoanPerMonth * 11);
+
+  return {
+    flashLoanTotal: flashLoanTotal, //วงเงินกู้ทั้งหมด
+    salaryBeforeNewLoan: incomePerMonth, //เงินได้รายเดือนก่อนกู้
+    previousFlashLoan: previousFlashLoan, //ยอดเงินกู้ฉุกเฉินสัญญาเก่า
+    newFlashLoanPerMonth: flashLoanPerMonth, //ยอดเงินกู้ต่อเดือน 1-11
+    flashLoanLastMonth: flashLoanLastMonth, //ยอดเงินกู้เดือนสุดท้าย
+    salaryAfterNewLoan: salaryAfterNewLoan //เงินได้รายเดือนหลังกู้ฉุกเฉินใหม่
+  }
+}
+
 function getOutStandingByType(type, contracts) {
-  const result = contracts.filter(contract => contract.id.slice(0,1) == type);
+  const result = contracts.filter(contract => contract.id.slice(0, 1) == type);
   if (result.length == 0) {
     return 0
   } else {
@@ -28,12 +66,36 @@ function getOutStandingByType(type, contracts) {
   }
 }
 
-function getTotalPayPerMonth(contracts) {
+function getOtherLoanPayPerMonth(contracts, loanType) {
   var totalPayPerMonth = 0;
   contracts.forEach(contract => {
-    totalPayPerMonth += contract.payPerMonth;
+    if (contract.id.slice(0, 1) != loanType) {
+      let principle = contract.payPerMonth;
+      let interest = getInterest(contract.id.slice(0, 1), contract.outStanding);
+      let payPerMonth = principle + interest;
+      totalPayPerMonth += payPerMonth;
+    }
   });
   return totalPayPerMonth;
+}
+
+function getInterest(type, outStanding) {
+  var interest = 0;
+  switch (type) {
+    case "ก", "ส", "ฉ":
+      interest = 6.15;
+      break;
+    case "c":
+      interest = 4.9;
+      break;
+    case "s":
+      interest = 3.9;
+      break;
+    default:
+      interest = 5.9;
+      break;
+  }
+  return ((outStanding * interest * 30) / 36500);
 }
 
 function getMemberStatus(memberStartDate) {
@@ -47,47 +109,6 @@ function getMemberStatus(memberStartDate) {
       return 0;
     }
   }
-}
-
-function flashLoan(userData) {
-  let salary = userData.salary;
-  let isNewMember = getMemberStatus(userData.memberStartDate) == 0;
-  let bond = userData.bondTotal;
-  let bondRatio = (bond * 90) / 100;
-  var flashLoanTotal = 0;
-  // ถ้าเป็นสมาชิกไม่ถึง 6 เดือนไม่มีสิทธิ์กู้ กู้ได้สูงสุดเท่ากับ2เท่าของเงินเดือนและไม่เกิน90%ของหุ้น
-  if (isNewMember) {
-    flashLoanTotal = 0;
-  } else {
-      if ((salary * 2) >= bondRatio) {
-        flashLoanTotal = bondRatio;
-      } else {
-        flashLoanTotal = (salary * 2);
-      }
-  }
-  let previousFlashLoan = getOutStandingByType("ฉ", userData.contracts);
-  flashLoanTotal -= previousFlashLoan;
-  let payPerMonthTotal = getTotalPayPerMonth(userData.contracts);
-  let salaryBeforeNewLoan = salary - payPerMonthTotal;
-  // เชคว่าตอนนี้เงินได้รายเดือนถึง 2000 หรือไม่ถ้าไม่ถึงจะไม่มีสิทธิ์กู้
-  if (salaryBeforeNewLoan <= 2000) {
-    flashLoanTotal = 0;
-  }
-  var flashLoanPerMonth = Math.ceil(flashLoanTotal / 12);
-  var salaryAfterNewLoan = salaryBeforeNewLoan - flashLoanPerMonth;
-  // เชคว่าหลังจากกู้สัญญาใหม่เงินได้ต่อเดือนถึง 2000 หรือไม่ถ้าไม่ถึงคำนวนวงเงินใหม่
-  if (salaryAfterNewLoan <= 2000) {
-    flashLoanPerMonth -= (2000 - salaryAfterNewLoan);
-    flashLoanTotal = flashLoanPerMonth * 12;
-    salaryAfterNewLoan = salaryBeforeNewLoan - flashLoanPerMonth;
-  }
-  return {
-      flashLoanTotal: flashLoanTotal,
-      salaryBeforeNewLoan: salaryBeforeNewLoan,
-      previousFlashLoan: previousFlashLoan,
-      newFlashLoanPerMonth: flashLoanPerMonth,
-      salaryAfterNewLoan: salaryAfterNewLoan
-    }
 }
 
 function mediumLoan(memberPeriod) {
@@ -163,3 +184,6 @@ let sampleData = {
     }
   ]
 }
+
+// (364200 * 6.15 * 30) / 36500
+// ยอดคงเหลือ  ดอกเบี้ย
