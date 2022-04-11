@@ -81,6 +81,17 @@ function getOtherLoanPayPerMonth(contracts, loanType) {
   return totalPayPerMonth;
 }
 
+function getAllOutStanding(contracts) {
+  var totalPayPerMonth = 0;
+  contracts.forEach((contract) => {
+      let principle = contract.payPerMonth;
+      let interest = getInterest(contract.id.slice(0, 1), contract.outStanding);
+      let payPerMonth = principle + interest;
+      totalPayPerMonth += payPerMonth;
+  });
+  return totalPayPerMonth;
+}
+
 function getInterest(type, outStanding) {
   var interest = 0;
   switch (type) {
@@ -172,6 +183,40 @@ function getRetireYearTotal(dob) {
     return retireYearTotal;
   } else {
     return retireYearTotal + 1;
+  }
+}
+
+function getPeriodBeforeRetire(retireYearTotal) {
+  return retireYearTotal * 12;
+}
+
+//ชำระหมดก่อนเกษียณ
+function paidBeforeRetire(userData, requestAmount) {
+  let maxLoanPeriod = 12; //H งวดผ่อนชำระสูงสุด
+  let retireYearTotal = getRetireYearTotal;
+  let periodBeforeRetire = getPeriodBeforeRetire(retireYearTotal); //H1 งวดก่อนเกษียณ
+  if (maxLoanPeriod <= periodBeforeRetire) {
+    let otherIncom = 0; //ผู้ใช้กรอก
+    let outcome = 0; //ผู้ใช้กรอก
+    let loanSummary = loanCalculation(requestAmount, maxLoanPeriod, userData, otherIncom, outcome);
+    return loanSummary; //ชำระทันตามยอด
+  } else {
+    return 0; //ชำระไม่ทันก่อนเกษียณ
+  }
+}
+
+function loanCalculation(maxLoanAmount, maxLoanPeriod, userData, otherIncom, outcome) {
+  let deptDoae = getAllOutStanding(userData.contracts)
+  let type = "ส";
+  var loanTotal = maxLoanAmount;
+  var loanPerMonth = Math.ceil(loanTotal / maxLoanPeriod / 10) * 10;
+  var interestPerMonth = getInterest(type, loanTotal);
+  var salaryTotalBeforeLoan = (userData.salary + otherIncom) - (outcome + deptDoae + userData.bondPerMonth + userData.deposit + loanPerMonth + interestPerMonth);
+  if (salaryTotalBeforeLoan < 2000) {
+    loanTotal -= 1000;
+    loanCalculation(loanTotal, maxLoanPeriod, userData, otherIncom, outcome);
+  } else {
+    return loanTotal;
   }
 }
 
