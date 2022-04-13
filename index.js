@@ -186,12 +186,16 @@ function getRetireYearTotal(dob) {
   }
 }
 
+function getMaxPeriod(type, userData) {
+
+}
+
 function getPeriodBeforeRetire(retireYearTotal) {
   return retireYearTotal * 12;
 }
 
 //ชำระหมดก่อนเกษียณ
-function paidBeforeRetire(userData, requestAmount) {
+function paidBeforeRetire(userData, requestAmount, type) {
   let maxLoanPeriod = 12; //H งวดผ่อนชำระสูงสุด
   let retireYearTotal = getRetireYearTotal;
   let periodBeforeRetire = getPeriodBeforeRetire(retireYearTotal); //H1 งวดก่อนเกษียณ
@@ -209,15 +213,24 @@ function loanCalculation(maxLoanAmount, maxLoanPeriod, userData, otherIncom, out
   let deptDoae = getAllOutStanding(userData.contracts)
   let type = "ส";
   var loanTotal = maxLoanAmount;
-  var loanPerMonth = Math.ceil(loanTotal / maxLoanPeriod / 10) * 10;
-  var interestPerMonth = getInterest(type, loanTotal);
-  var salaryTotalBeforeLoan = (userData.salary + otherIncom) - (outcome + deptDoae + userData.bondPerMonth + userData.deposit + loanPerMonth + interestPerMonth);
-  if (salaryTotalBeforeLoan < 2000) {
-    loanTotal -= 1000;
-    loanCalculation(loanTotal, maxLoanPeriod, userData, otherIncom, outcome);
-  } else {
-    return loanTotal;
+  var salaryTotalBeforeLoan = 0
+  while (salaryTotalBeforeLoan < 2000) {
+    var loanPerMonth = Math.ceil(loanTotal / maxLoanPeriod / 10) * 10;
+    var interestPerMonth = getInterest(type, loanTotal);
+    salaryTotalBeforeLoan = (userData.salary + otherIncom) - (outcome + deptDoae + userData.bondPerMonth + userData.deposit + loanPerMonth + interestPerMonth);
+    if (salaryTotalBeforeLoan < 2000) {
+      loanTotal -= 1000;
+    }
   }
+  return loanTotal;
+}
+
+function paidAfterRetire(loanAmount, loanPeriod, periodBeforeRetire) {
+  var loanTotal = loanAmount // F2, M/H
+  let periodAfterRetire = loanPeriod - periodBeforeRetire; // H2
+  let loanTotalAfterRetire = loanTotal * periodAfterRetire; // F2 * H2
+  var interestPerMonth = getInterest(type, loanTotalAfterRetire); // G2
+  let salaryTotalBeforeLoan = getRetireSalary()
 }
 
 function getAge(dob) {
