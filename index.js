@@ -225,12 +225,13 @@ function loanCalculation(maxLoanAmount, maxLoanPeriod, userData, otherIncom, out
   return loanTotal;
 }
 
-function paidAfterRetire(loanAmount, loanPeriod, periodBeforeRetire) {
+function paidAfterRetire(loanAmount, loanPeriod, periodBeforeRetire, yearBeforeRetire, userData, otherIncom, outcome) {
+  let deptDoae = getAllOutStanding(userData.contracts)
   var loanTotal = loanAmount // F2, M/H
   let periodAfterRetire = loanPeriod - periodBeforeRetire; // H2
   let loanTotalAfterRetire = loanTotal * periodAfterRetire; // F2 * H2
   var interestPerMonth = getInterest(type, loanTotalAfterRetire); // G2
-  let salaryTotalBeforeLoan = getRetireSalary()
+  let salaryTotalBeforeLoan = (getRetireSalary(yearBeforeRetire, userData.salary) + otherIncom) - (outcome + deptDoae + 100 + userData.deposit + loanTotal + interestPerMonth)
 }
 
 function getAge(dob) {
