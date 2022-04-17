@@ -84,10 +84,10 @@ function getOtherLoanPayPerMonth(contracts, loanType) {
 function getAllOutStanding(contracts) {
   var totalPayPerMonth = 0;
   contracts.forEach((contract) => {
-      let principle = contract.payPerMonth;
-      let interest = getInterest(contract.id.slice(0, 1), contract.outStanding);
-      let payPerMonth = principle + interest;
-      totalPayPerMonth += payPerMonth;
+    let principle = contract.payPerMonth;
+    let interest = getInterest(contract.id.slice(0, 1), contract.outStanding);
+    let payPerMonth = principle + interest;
+    totalPayPerMonth += payPerMonth;
   });
   return totalPayPerMonth;
 }
@@ -129,7 +129,7 @@ function mediumLoan(userData) {
   let payPerMonthTotal = getOtherLoanPayPerMonth(userData.contracts, "ก");
   var incomePerMonth = userData.salary - payPerMonthTotal;
   var memberPeriod = getMemberStatus(userData.memberStartDate);
-  let age = parseInt(userData.age.slice(0,2));
+  let age = parseInt(userData.age.slice(0, 2));
   // เชคเงื่อนไข อายุกการเป็นสมาชิก อายุสมาชิก เงินได้ต่อเดือน
   if (memberPeriod == 0 || age >= 70 || incomePerMonth <= 2000) {
     return {
@@ -227,11 +227,32 @@ function loanCalculation(maxLoanAmount, maxLoanPeriod, userData, otherIncom, out
 
 function paidAfterRetire(loanAmount, loanPeriod, periodBeforeRetire, yearBeforeRetire, userData, otherIncom, outcome) {
   let deptDoae = getAllOutStanding(userData.contracts)
-  var loanTotal = loanAmount // F2, M/H
+  var loanTotal = loanAmount
+  var salaryTotalBeforeLoan = 0
+  var loanTotalAfterRetire = 0 //H2
+  var loanPerMonthAfterRetire = 0
   let periodAfterRetire = loanPeriod - periodBeforeRetire; // H2
-  let loanTotalAfterRetire = loanTotal * periodAfterRetire; // F2 * H2
-  var interestPerMonth = getInterest(type, loanTotalAfterRetire); // G2
-  let salaryTotalBeforeLoan = (getRetireSalary(yearBeforeRetire, userData.salary) + otherIncom) - (outcome + deptDoae + 100 + userData.deposit + loanTotal + interestPerMonth)
+  while (salaryTotalBeforeLoan < 2000) {
+    loanPerMonthAfterRetire = loanTotal / loanPeriod // M/H
+    loanTotalAfterRetire = loanPerMonthAfterRetire * periodAfterRetire; // F2 * H2
+    let interestPerMonth = getInterest(type, loanTotalAfterRetire); // G2
+    salaryTotalBeforeLoan = (getRetireSalary(yearBeforeRetire, userData.salary) + otherIncom) - (outcome + deptDoae + 100 + userData.deposit + loanPerMonthAfterRetire + interestPerMonth) //n2
+    if (salaryTotalBeforeLoan < 2000) {
+      loanTotal -= 100;
+    }
+  }
+  var loanBeforeRetire = loanTotal - loanTotalAfterRetire
+  var loanPerMonthBeforeRetire = 0
+  salaryTotalBeforeLoan = 0
+  while (salaryTotalBeforeLoan < 2000) {
+    loanPerMonthBeforeRetire = loanBeforeRetire / periodBeforeRetire //F1
+    let interestPerMonth = getInterest(type, loanBeforeRetire); // G1
+    salaryTotalBeforeLoan = (userData.salary + otherIncom) - (outcome + deptDoae + 100 + userData.deposit + loanPerMonthBeforeRetire + interestPerMonth) //n2
+    if (salaryTotalBeforeLoan < 2000) {
+      loanBeforeRetire -= 100;
+    }
+  }
+
 }
 
 function getAge(dob) {
